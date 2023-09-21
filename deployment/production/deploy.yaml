@@ -1,0 +1,70 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rqmonitor
+  namespace: default
+data:
+  REDIS_URLS: |
+    redis://192.168.33.12:6379/0,
+    redis://192.168.33.12:6379/1,
+    redis://192.168.33.12:6379/2,
+    redis://192.168.33.3:6379/0,
+    redis://192.168.33.3:6379/1,
+    redis://192.168.12.3:6379/0,
+    redis://192.168.12.3:6379/1,
+    redis://192.168.12.3:6379/2,
+    redis://192.168.12.3:6379/3
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rq-monitor
+  namespace: default
+  labels:
+    app: rq-monitor
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rq-monitor
+  template:
+    metadata:
+      labels:
+        app: rq-monitor
+    spec:
+      containers:
+        - name: dashboard
+          image: pranavgupta1234/rqmonitor:latest
+          ports:
+            - name: http
+              containerPort: 8899
+              protocol: TCP
+          env:
+            - name: RQ_MONITOR_REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: rqmonitor
+                  key: REDIS_URLS
+            - name: RQ_MONITOR_USERNAME
+              value: "stackbox"
+            - name: RQ_MONITOR_PASSWORD
+              value: "AKTzqO8ZuZ8PFkG"
+          resources:
+            limits:
+              memory: 500Mi
+            requests:
+              cpu: 10m
+              memory: 10Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rqmonitor
+  namespace: default
+spec:
+  selector:
+    app: rq-monitor
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: http
